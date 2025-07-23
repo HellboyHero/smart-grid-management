@@ -1,0 +1,343 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    body {
+        background-color: #f0f4c3;
+    }
+    </style>
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">Generate Bill</h3>
+                </div>
+                <div class="card-body">
+                    <form id="billForm" method="POST">
+                        {% csrf_token %}
+
+                        <!-- Customer ID Search -->
+                        <div class="mb-3">
+                            <label for="customer_id" class="form-label">Customer ID</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="customer_id" name="customer_id"
+                                    placeholder="Enter Customer ID (e.g., CUS1234567)" required>
+                                <button class="btn btn-outline-secondary" type="button" id="searchBtn">
+                                    <i class="fas fa-search"></i> Search
+                                </button>
+                            </div>
+                            <div id="customerIdFeedback" class="invalid-feedback"></div>
+                        </div>
+
+                        <!-- Customer Details Section -->
+                        <div id="customerDetails" style="display: none;">
+                            <div class="card mb-3">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">Customer Details</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label">Customer Name</label>
+                                                <input type="text" class="form-control" id="full_name" name="full_name"
+                                                    readonly>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">Service Number</label>
+                                                <input type="text" class="form-control" id="service_no"
+                                                    name="service_no" readonly>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">Door Number</label>
+                                                <input type="text" class="form-control" id="door_number"
+                                                    name="door_number" readonly>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label">Area Name</label>
+                                                <input type="text" class="form-control" id="area_name" name="area_name"
+                                                    readonly>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">Full Address</label>
+                                                <textarea class="form-control" id="location" name="location" readonly
+                                                    rows="3"></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Previous Bill Info -->
+                            <div class="card mb-3">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">Previous Bill Information</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <p><strong>Last Bill Amount:</strong> <span id="lastBillAmount">₹0</span>
+                                            </p>
+                                            <p><strong>Last Bill Units:</strong> <span id="lastBillUnits">0</span></p>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <p><strong>Last Bill Period:</strong> <span id="lastBillPeriod">N/A</span>
+                                            </p>
+                                            <p><strong>Total Bills Generated:</strong> <span id="totalBills">0</span>
+                                            </p>
+                                        </div>
+                                        <div class="col-12">
+                                            <p><strong>Previous Bills:</strong> <span id="prevBills">N/A</span></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- New Bill Details -->
+                            <div class="card mb-3">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">New Bill Details</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="month" class="form-label">Month</label>
+                                                <select class="form-control" id="month" name="month" required>
+                                                    <option value="">Select Month</option>
+                                                    <option value="January">January</option>
+                                                    <option value="February">February</option>
+                                                    <option value="March">March</option>
+                                                    <option value="April">April</option>
+                                                    <option value="May">May</option>
+                                                    <option value="June">June</option>
+                                                    <option value="July">July</option>
+                                                    <option value="August">August</option>
+                                                    <option value="September">September</option>
+                                                    <option value="October">October</option>
+                                                    <option value="November">November</option>
+                                                    <option value="December">December</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="year" class="form-label">Year</label>
+                                                <input type="text" class="form-control" id="year" name="year"
+                                                    value="2023" required>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="units_consumed" class="form-label">Units Consumed</label>
+                                        <input type="number" class="form-control" id="units_consumed"
+                                            name="units_consumed" required>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Generate Bill</button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Bill Result Modal -->
+            <div class="modal fade" id="billModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Bill Details</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div id="billDetails"></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-primary" onclick="printBill()">Print Bill</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    document.getElementById('searchBtn').addEventListener('click', function () {
+        fetchCustomerDetails();
+    });
+
+    document.getElementById('customer_id').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            fetchCustomerDetails();
+        }
+    });
+
+    function fetchCustomerDetails() {
+        const customerId = document.getElementById('customer_id').value;
+        if (!customerId) {
+            showError('Please enter a Customer ID');
+            return;
+        }
+
+        fetch(`/get_user_details_by_id/?customer_id=${encodeURIComponent(customerId)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log(data);
+                    // Show customer details section
+                    document.getElementById('customerDetails').style.display = 'block';
+
+                    // Fill in customer details
+                    document.getElementById('full_name').value = data.data.full_name;
+                    document.getElementById('service_no').value = data.data.service_no;
+                    document.getElementById('door_number').value = data.data.door_number;
+                    document.getElementById('area_name').value = data.data.area_name;
+                    document.getElementById('location').value = data.data.location;
+
+                    // Fill in previous bill information
+                    document.getElementById('lastBillAmount').textContent = `₹${data.data.last_bill_amount.toFixed(2)}`;
+                    document.getElementById('lastBillUnits').textContent = data.data.last_bill_units;
+                    document.getElementById('lastBillPeriod').textContent = data.data.last_bill_month
+                        ? `${data.data.last_bill_month} ${data.data.last_bill_year}`
+                        : 'N/A';
+                    document.getElementById('totalBills').textContent = data.data.total_bills;
+
+                    // Display Previous Bills
+                    if (data.data.previous_bills_data && data.data.previous_bills_data.length > 0) {
+                        let billsHtml = '<ul>';
+                        data.data.previous_bills_data.forEach(bill => {
+                            billsHtml += `
+                            <li>
+                                 Amount: ₹${bill.total_amount} | 
+                Period: ${bill.month} ${bill.year} | 
+                Units Consumed: ${bill.units_consumed} | 
+                Rate per Unit: ₹${bill.rate_per_unit} | 
+                Amount: ₹${bill.amount} | 
+                Tax: ₹${bill.tax} | 
+                Generated Date: ${new Date(bill.generated_date).toLocaleString()}
+            </li>
+                            </li>
+                        `;
+                        });
+                        billsHtml += '</ul>';
+                        document.getElementById('prevBills').innerHTML = billsHtml;
+                    } else {
+                        document.getElementById('prevBills').textContent = 'No previous bills available.';
+                    }
+
+                    // Clear any previous errors
+                    clearError();
+                } else {
+                    showError(data.error);
+                    document.getElementById('customerDetails').style.display = 'none';
+                }
+            })
+            .catch(error => {
+                showError('Error fetching customer details');
+                document.getElementById('customerDetails').style.display = 'none';
+            });
+    }
+
+    function showError(message) {
+        const customerIdInput = document.getElementById('customer_id');
+        const feedback = document.getElementById('customerIdFeedback');
+        customerIdInput.classList.add('is-invalid');
+        feedback.textContent = message;
+        feedback.style.display = 'block';
+    }
+
+    function clearError() {
+        const customerIdInput = document.getElementById('customer_id');
+        const feedback = document.getElementById('customerIdFeedback');
+        customerIdInput.classList.remove('is-invalid');
+        feedback.style.display = 'none';
+    }
+
+    // Handle form submission
+    document.getElementById('billForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+
+        fetch('/bill_generation/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const billHtml = `
+                    <div class="text-center mb-4">
+                        <h4>Electricity Bill</h4>
+                        <p class="mb-0">Customer ID: ${document.getElementById('customer_id').value}</p>
+                        <p class="mb-0">Customer Name: ${document.getElementById('full_name').value}</p>
+                        <p class="mb-0">Service No: ${document.getElementById('service_no').value}</p>
+                        <p class="mb-0">Bill ID: ${data.bill_id}</p>
+                        <p>Generated Date: ${new Date().toLocaleDateString()}</p>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-6">Units Consumed:</div>
+                        <div class="col-6">${document.getElementById('units_consumed').value}</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-6">Amount:</div>
+                        <div class="col-6">₹${data.amount.toFixed(2)}</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-6">Tax (5%):</div>
+                        <div class="col-6">₹${data.tax.toFixed(2)}</div>
+                    </div>
+                    <div class="row mb-2 fw-bold">
+                        <div class="col-6">Total Amount:</div>
+                        <div class="col-6">₹${data.total_amount.toFixed(2)}</div>
+                    </div>
+                `;
+                    document.getElementById('billDetails').innerHTML = billHtml;
+                    new bootstrap.Modal(document.getElementById('billModal')).show();
+                } else {
+                    alert(data.error || 'Error generating bill');
+                }
+            });
+    });
+
+    function printBill() {
+        const printWindow = window.open('', '', 'width=600,height=600');
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Electricity Bill</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; }
+                        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+                        .text-center { text-align: center; }
+                        .mb-4 { margin-bottom: 1.5rem; }
+                        .mb-2 { margin-bottom: 0.5rem; }
+                        .row { display: flex; justify-content: space-between; }
+                        .fw-bold { font-weight: bold; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        ${document.getElementById('billDetails').innerHTML}
+                    </div>
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+        printWindow.close();
+    }
+</script>
+{% endblock %}
+{% endblock %}

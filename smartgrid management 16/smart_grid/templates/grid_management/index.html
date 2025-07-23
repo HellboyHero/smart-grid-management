@@ -1,0 +1,1451 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Grid Management</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-gradient"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #f0f4c3, #81d4fa);
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+            background: #e1f5fe;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+            border: 1px solid rgba(220, 237, 220, 0.5);
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            background: linear-gradient(to bottom right, #ffffff, #f5f8f5);
+            border: 1px solid #bdbdbd;
+        }
+        .metric-card {
+            background: #ffe0b2;
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+        }
+        .metric-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+        }
+        .metric-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, #1a237e, #0d47a1);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 1s ease-in-out;
+        }
+        .metric-card.updating::after {
+            transform: scaleX(1);
+        }
+        .metric-value {
+            font-size: 1.75rem;
+            font-weight: bold;
+            color: #1a237e;
+            transition: all 0.3s ease;
+            margin: 0.5rem 0;
+        }
+        .metric-label {
+            color: #546e7a;
+            font-weight: 500;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+        .metric-value.updating {
+            animation: pulse 0.5s ease-in-out;
+        }
+        .metric-timestamp {
+            font-size: 0.9rem;
+            color: #78909c;
+            margin-top: 0.75rem;
+            font-weight: 500;
+        }
+        .metric-timestamp i {
+            color: #1a237e;
+            margin-right: 0.3rem;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .form-range {
+            height: 1.5rem;
+            width: 100%;
+        }
+        .form-range::-webkit-slider-thumb {
+            background: #1a237e;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+        }
+        .form-range::-moz-range-thumb {
+            background: #1a237e;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            border: none;
+        }
+        .form-range::-ms-thumb {
+            background: #1a237e;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            border: none;
+        }
+        .form-range::-webkit-slider-runnable-track {
+            background: #e3f2fd;
+            border-radius: 0.25rem;
+        }
+        .form-range::-moz-range-track {
+            background: #e3f2fd;
+            border-radius: 0.25rem;
+        }
+        .form-range::-ms-track {
+            background: #e3f2fd;
+            border-radius: 0.25rem;
+        }
+        .alert {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+            background-color: #ffccbc;
+            color: #d32f2f;
+        }
+        .navbar {
+            background: linear-gradient(90deg, #2c3e50, #3498db) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .navbar-brand {
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .btn-light {
+            background: #ffffff;
+            border: 1px solid #64b5f6;
+            color: #64b5f6;
+            font-weight: 500;
+            padding: 0.5rem 1.25rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .btn-light:hover {
+            background: #ffffff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .btn-primary {
+            background: linear-gradient(45deg, #2ecc71, #27ae60);
+            border: none;
+            box-shadow: 0 4px 8px rgba(46, 204, 113, 0.2);
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(45deg, #27ae60, #219a52);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(46, 204, 113, 0.3);
+        }
+        .btn-secondary {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            border: none;
+            box-shadow: 0 4px 8px rgba(231, 76, 60, 0.2);
+            transition: all 0.3s ease;
+        }
+        .btn-secondary:hover {
+            background: linear-gradient(45deg, #c0392b, #a93226);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(231, 76, 60, 0.3);
+        }
+        .alert-success {
+            background: linear-gradient(45deg, rgba(46, 204, 113, 0.1), rgba(39, 174, 96, 0.1));
+            border-left: 4px solid #2ecc71;
+            color: #27ae60;
+        }
+        .alert-danger {
+            background: linear-gradient(45deg, rgba(231, 76, 60, 0.1), rgba(192, 57, 43, 0.1));
+            border-left: 4px solid #e74c3c;
+            color: #c0392b;
+        }
+        .form-control {
+            border-radius: 10px;
+            border: 1px solid rgba(52, 152, 219, 0.2);
+            transition: all 0.3s ease;
+        }
+        .form-control:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+        }
+        .card-header {
+            background: #64b5f6;
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            padding: 1.2rem;
+        }
+        .metrics-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Smart Grid Management</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{% url 'grid_management:index' %}">Dashboard</a>
+                    </li>
+                </ul>
+                <div class="d-flex align-items-center">
+                    <div class="dropdown me-3">
+                        <button class="btn btn-light dropdown-toggle d-flex align-items-center" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-user-circle me-2"></i>
+                            {{ user.userprofile.full_name|default:user.username }}
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="profileDropdown" style="min-width: 300px;">
+                            <li>
+                                <div class="px-4 py-3">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="fas fa-user-circle fa-2x me-3 text-primary"></i>
+                                        <div>
+                                            <h6 class="mb-0">{{ user.userprofile.full_name }}</h6>
+                                            <small class="text-muted">@{{ user.username }}</small>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <small class="text-muted">Customer ID:</small>
+                                        <span class="ms-2">{{ user.userprofile.customer_id }}</span>
+                                    </div>
+                                    <div class="mt-2">
+                                        <small class="text-muted">Service No:</small>
+                                        <span class="ms-2">{{ user.userprofile.service_no }}</span>
+                                    </div>
+                                </div>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center" href="{% url 'grid_management:profile' %}">
+                                    <i class="fas fa-user-cog me-2"></i>
+                                    View Profile
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center" href="{% url 'grid_management:logout' %}">
+                                    <i class="fas fa-sign-out-alt me-2"></i>
+                                    Logout
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">Smart Grid Management</h1>
+        
+        {% if error %}
+            <div class="alert alert-danger">{{ error }}</div>
+        {% endif %}
+        
+        <div class="row">
+            <div class="col-12">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h4>Real-Time Energy Distribution</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="metrics-container">
+                            <div class="metric-card">
+                                <div class="metric-label">Current Demand</div>
+                                <div class="metric-value" id="currentDemand">-</div>
+                                <div class="metric-timestamp">
+                                    <i class="fas fa-clock"></i>
+                                    <span id="currentDemandTime">Last Update: -</span>
+                                </div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Peak Demand</div>
+                                <div class="metric-value" id="peakDemand">-</div>
+                                <div class="metric-timestamp">
+                                    <i class="fas fa-clock"></i>
+                                    <span id="peakDemandTime">Last Hour</span>
+                                </div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Average Demand</div>
+                                <div class="metric-value" id="avgDemand">-</div>
+                                <div class="metric-timestamp">
+                                    <i class="fas fa-clock"></i>
+                                    <span id="avgDemandTime">Last Hour</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="energyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h4>Load Balancing</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="demandAdjustment" class="form-label">Adjust Demand</label>
+                            <input type="range" class="form-range" id="demandAdjustment" min="-100" max="100" value="0">
+                            <div class="text-center" id="adjustmentValue">0%</div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="balancedChart"></canvas>
+                        </div>
+                        <div id="balancingMetrics" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h4>Power Distribution Analysis</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="chart-container">
+                                    <canvas id="powerDistChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="metrics-container">
+                                    <div class="metric-card">
+                                        <div class="metric-label">Total Power Loss</div>
+                                        <div class="metric-value" id="totalLoss">0.00 MW</div>
+                                        <div class="metric-details" id="lossPercentage">0.0%</div>
+                                    </div>
+                                    <div class="metric-card">
+                                        <div class="metric-label">Critical Points</div>
+                                        <div class="metric-value" id="criticalPointCount">0</div>
+                                        <div class="metric-details">Potential leakage points</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-4">
+                                    <h6>Distribution Efficiency</h6>
+                                    <div class="progress mb-3" style="height: 25px;">
+                                        <div id="distributionEfficiencyBar" class="progress-bar bg-success" role="progressbar" style="width: 100%">
+                                            100%
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Leakage Points List -->
+                                <div class="mt-4">
+                                    <h6>Detected Leakage Points</h6>
+                                    <div id="leakagePointsList" class="list-group">
+                                        <!-- Will be populated dynamically -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Leakage Heatmap -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <h6>Power Distribution Network Heatmap</h6>
+                                <div class="chart-container">
+                                    <canvas id="leakageHeatmap"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Alerts Section -->
+                        <div id="leakageAlerts" class="mt-4" style="display: none;">
+                            <div class="alert alert-warning">
+                                <h6 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> Power Leakage Alerts</h6>
+                                <ul id="leakageAlertsList" class="mb-0"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Power Generation Prediction</title>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+            <script defer>
+                document.addEventListener("DOMContentLoaded", function() {
+                    document.getElementById("predictionForm").addEventListener("submit", function(event) {
+                        event.preventDefault();
+        
+                        let resultDiv = document.getElementById("predictionResult");
+        
+                        // Show loading spinner
+                        resultDiv.innerHTML = `
+                            <div class="text-center">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <div class="mt-2">Generating prediction...</div>
+                            </div>`;
+        
+                        // Simulate API delay
+                        setTimeout(() => {
+                            let currentDemandGW = (Math.random() * (3 - 1) + 1).toFixed(2); // Between 1-3 GW
+                            let actualDemandMW = (currentDemandGW * 1000).toFixed(2); // Convert GW to MW
+                            let predictedGeneration = (Math.random() * (3000 - 1500) + 1500).toFixed(2); // Between 1500-3000 MW
+                            let theftDetected = Math.random() > 0.7; // 30% chance of theft
+                            let theftDifference = theftDetected ? (Math.random() * (500 - 100) + 100).toFixed(2) : 0;
+        
+                            let theftAlert = theftDetected 
+                                ? `<div class="alert alert-warning mt-2 mb-0">
+                                    <strong>⚠️ Potential Power Theft Detected!</strong><br>
+                                    Difference: ${theftDifference} MW
+                                   </div>`
+                                : '<p class="text-success mb-0">✓ No power theft detected</p>';
+        
+                            resultDiv.innerHTML = `
+                                <div class="alert alert-success">
+                                    <h5>⚡ Power Generation Results</h5>
+                                    <p><strong>Current Demand:</strong> ${currentDemandGW} GW</p>
+                                    <p><strong>Actual Demand:</strong> ${actualDemandMW} MW</p>
+                                    <p><strong>Predicted Generation:</strong> ${predictedGeneration} MW</p>
+                                    ${theftAlert}
+                                </div>`;
+
+                            if(theftDetected){
+                                fetch('http://localhost:3000/api/sendmail', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                        email: 'deadlydealer0786@gmail.com',
+                                        theftDifference,
+                                        currentDemandGW,
+                                        actualDemandMW,
+                                        predictedGeneration
+                                    })
+                                })
+                            }
+                            if(theftDetected){
+                                alert("⚠️ Potential power theft detected! An alert has been sent to the LINE-MAN for further investigation.");
+                            }                            
+                        }, 2000);
+                    });
+                });
+            </script>
+        </head>
+        <body class="container mt-4">
+            <div class="card p-4">
+                <h2 class="text-center text-primary">Power Generation Prediction</h2>
+                <div class="alert alert-danger">
+                    <h5>📊 Typical Value Ranges:</h5>
+                    <ul>
+                        <li>Temperature: 15-35°C</li>
+                        <li>Solar Radiation: 600-1000 W/m²</li>
+                        <li>Wind Speed: 3-8 m/s</li>
+                        <li>Humidity: 45-80%</li>
+                        <li>Cloud Cover: 0-100%</li>
+                    </ul>
+                </div>
+        
+                <form id="predictionForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label">Temperature (°C)</label>
+                            <input type="number" name="temperature" class="form-control" value="20" required>
+                            <small class="text-muted">Optimal range: 25-30°C</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Relative Humidity (%)</label>
+                            <input type="number" name="humidity" class="form-control" value="50" required>
+                            <small class="text-muted">Lower humidity typically means clearer skies</small>
+                        </div>
+                    </div>
+        
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Solar Radiation (W/m²)</label>
+                            <input type="number" name="solar_radiation" class="form-control" value="700" required>
+                            <small class="text-muted">Higher values indicate better generation potential</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Cloud Cover (%)</label>
+                            <input type="number" name="cloud_cover" class="form-control" value="50" required>
+                            <small class="text-muted">Lower values indicate better solar generation</small>
+                        </div>
+                    </div>
+        
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Wind Speed (m/s)</label>
+                            <input type="number" name="wind_speed" class="form-control" value="5" required>
+                            <small class="text-muted">Moderate winds (4-6 m/s) are optimal</small>
+                        </div>
+                    </div>
+        
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-success w-100">Predict Power Generation</button>
+                    </div>
+                </form>
+        
+                <div id="predictionResult" class="mt-4"></div>
+            </div>
+        </body>
+        </html>
+        <p 
+        >
+            <p
+            >
+        <div class="row">
+            <div class="col-12">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h4>Bill Generation</h4>
+                    </div>
+                    <div class="card-body">
+                        <form id="billGenerationForm">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="customer_name">Customer Name</label>
+                                        <input type="text" class="form-control" id="customer_name" name="customer_name" readonly>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="customer_id">Customer ID</label>
+                                        <input type="text" class="form-control" id="customer_id" name="customer_id" readonly>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="service_no">Service Number</label>
+                                        <input type="text" class="form-control" id="service_no" name="service_no" readonly>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="billing_period">Billing Period</label>
+                                        <select class="form-control" id="billing_period" name="billing_period" required>
+                                            <option value="monthly">Monthly</option>
+                                            <option value="quarterly">Quarterly</option>
+                                            <option value="yearly">Yearly</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="energy_consumed">Energy Consumed (kWh)</label>
+                                        <input type="number" class="form-control" id="energy_consumed" name="energy_consumed" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Generate Bill</button>
+                        </form>
+
+                        <div id="billResult" class="mt-4"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Function to format power values
+        function formatPower(value) {
+            // Value is in GW
+            return value.toFixed(2) + ' GW';
+        }
+
+        // Function to format time
+        function formatTime(date) {
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const seconds = String(date.getSeconds()).padStart(2, '0');
+            return `${hours}:${minutes}:${seconds}`;
+        }
+
+        // Function to update metric with animation
+        function updateMetricWithAnimation(elementId, newValue) {
+            const element = $('#' + elementId);
+            if (!element.length) {
+                console.error('Element not found:', elementId);
+                return;
+            }
+            
+            // Add updating class for animation
+            element.addClass('updating');
+            element.parent('.metric-card').addClass('updating');
+            
+            // Update value with proper formatting
+            element.text(formatPower(newValue));
+            
+            // Remove animation classes after transition
+            setTimeout(() => {
+                element.removeClass('updating');
+                element.parent('.metric-card').removeClass('updating');
+            }, 500);
+        }
+
+        // Function to fetch and update real-time data
+        function updateRealTimeData() {
+            console.log('Fetching real-time data...');
+            $.ajax({
+                url: '{% url "grid_management:get_real_time_data" %}',
+                method: 'GET',
+                success: function(response) {
+                    console.log('Received data:', response);
+                    
+                    if (response.error) {
+                        console.error('Server error:', response.error);
+                        return;
+                    }
+                    
+                    // Update metrics with animation (values are in GW)
+                    updateMetricWithAnimation('currentDemand', response.current_demand);
+                    updateMetricWithAnimation('peakDemand', response.peak_demand);
+                    updateMetricWithAnimation('avgDemand', response.avg_demand);
+                    
+                    // Update timestamp with current time
+                    const now = new Date();
+                    $('#currentDemandTime').text('Last Update: ' + formatTime(now));
+                    $('#peakDemandTime').text('Last Hour');
+                    $('#avgDemandTime').text('Last Hour');
+                    
+                    // Update chart with new data point
+                    const chartData = energyChart.data.datasets[0].data;
+                    chartData.push(response.current_demand);
+                    if (chartData.length > 60) {  // Keep last 60 points
+                        chartData.shift();
+                    }
+                    energyChart.update('none');
+
+                    // Update power distribution display if data is available
+                    if (response.distribution_data) {
+                        updatePowerDistributionDisplay(response.distribution_data);
+                    }
+                },
+                error: function(xhr) {
+                    console.error('Error fetching real-time data:', xhr.responseText);
+                }
+            });
+        }
+
+        // Initial update and set interval
+        $(document).ready(function() {
+            console.log('Document ready, starting updates...');
+            // Initial update
+            updateRealTimeData();
+            
+            // Set up periodic updates every 30 seconds
+            setInterval(updateRealTimeData, 30000);  // 30000 ms = 30 seconds
+            
+            // Update the current time every second
+            setInterval(function() {
+                const now = new Date();
+                $('#currentTime').text(formatTime(now));
+            }, 1000);
+        });
+
+        // Create gradient for the chart
+        function createGradient(ctx, color1, color2) {
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, color1);
+            gradient.addColorStop(1, color2);
+            return gradient;
+        };
+
+        // Chart configuration
+        const ctx = document.getElementById('energyChart').getContext('2d');
+        const energyGradient = createGradient(ctx, 'rgba(26, 35, 126, 0.4)', 'rgba(26, 35, 126, 0.0)');
+        const energyChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array(60).fill(''),
+                datasets: [{
+                    label: 'Energy Demand (MW)',
+                    data: [],
+                    borderColor: '#2196F3',
+                    backgroundColor: energyGradient,
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                    cubicInterpolationMode: 'monotone',
+                    spanGaps: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 750,
+                    easing: 'easeInOutQuart'
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'nearest'
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            usePointStyle: false,
+                            padding: 20,
+                            font: {
+                                size: 14,
+                                weight: '600'
+                            }
+                        }
+                    },
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                        titleColor: '#2c3e50',
+                        bodyColor: '#2c3e50',
+                        borderColor: '#e0e0e0',
+                        borderWidth: 1,
+                        padding: 12,
+                        cornerRadius: 8,
+                        displayColors: false,
+                        callbacks: {
+                            label: function(context) {
+                                return `Demand: ${formatPower(context.parsed.y)}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)',
+                            drawBorder: false
+                        },
+                        border: {
+                            display: false
+                        },
+                        ticks: {
+                            padding: 10,
+                            font: {
+                                size: 12,
+                                weight: '500'
+                            },
+                            callback: function(value) {
+                                return formatPower(value);
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        border: {
+                            display: false
+                        },
+                        ticks: {
+                            display: false
+                        }
+                    }
+                },
+                elements: {
+                    line: {
+                        tension: 0.4
+                    }
+                }
+            }
+        });
+
+        // Create balanced chart with dual gradients
+        const balancedCtx = document.getElementById('balancedChart').getContext('2d');
+        const originalGradient = createGradient(balancedCtx, 'rgba(76, 175, 80, 0.4)', 'rgba(76, 175, 80, 0.0)');
+        const balancedGradient = createGradient(balancedCtx, 'rgba(255, 87, 34, 0.4)', 'rgba(255, 87, 34, 0.0)');
+
+        const balancedChart = new Chart(balancedCtx, {
+            type: 'line',
+            data: {
+                labels: Array(60).fill(''),
+                datasets: [{
+                    label: 'Original Demand',
+                    data: [],
+                    borderColor: '#4CAF50',
+                    backgroundColor: originalGradient,
+                    borderWidth: 3,
+                    fill: true
+                },
+                {
+                    label: 'Balanced Demand',
+                    data: [],
+                    borderColor: '#FF5722',
+                    backgroundColor: balancedGradient,
+                    borderWidth: 3,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 750,
+                    easing: 'easeInOutQuart'
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'nearest'
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            usePointStyle: false,
+                            padding: 20,
+                            font: {
+                                size: 14,
+                                weight: '600'
+                            }
+                        }
+                    },
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                        titleColor: '#2c3e50',
+                        bodyColor: '#2c3e50',
+                        borderColor: '#e0e0e0',
+                        borderWidth: 1,
+                        padding: 12,
+                        cornerRadius: 8,
+                        displayColors: true,
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${formatPower(context.parsed.y)}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)',
+                            drawBorder: false
+                        },
+                        border: {
+                            display: false
+                        },
+                        ticks: {
+                            padding: 10,
+                            font: {
+                                size: 12,
+                                weight: '500'
+                            },
+                            callback: function(value) {
+                                return formatPower(value);
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        border: {
+                            display: false
+                        },
+                        ticks: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+
+        // Initialize power loss chart
+        let powerLossChart = null;
+
+        function initializePowerLossChart() {
+            const ctx = document.getElementById('powerLossChart').getContext('2d');
+            powerLossChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 60}, (_, i) => i),
+                    datasets: [
+                        {
+                            label: 'Input Power',
+                            borderColor: '#2ecc71',
+                            backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                            data: []
+                        },
+                        {
+                            label: 'Output Power',
+                            borderColor: '#e74c3c',
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            data: []
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Power (MW)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time (minutes)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updatePowerLossDisplay(data) {
+            if (!data || !data.grid_health) {
+                console.error('Invalid data for power loss display:', data);
+                return;
+            }
+
+            const gridHealth = data.grid_health;
+
+            // Update metrics
+            $('#powerLossValue').text(gridHealth.leakage.amount_mw.toFixed(2) + ' MW');
+            $('#lossPercentageValue').text(gridHealth.leakage.percentage.toFixed(1) + '%');
+
+            // Update progress bars
+            const voltageStability = 100 - Math.abs(gridHealth.voltage_fluctuation);
+            $('#voltageStabilityBar')
+                .css('width', voltageStability + '%')
+                .text(voltageStability.toFixed(1) + '%');
+
+            $('#equipmentHealthBar')
+                .css('width', gridHealth.equipment_health + '%')
+                .text(gridHealth.equipment_health.toFixed(1) + '%');
+
+            // Update issues
+            const issuesContainer = $('#issuesContainer');
+            const issuesList = $('#issuesList');
+            issuesList.empty();
+
+            if (gridHealth.issues && gridHealth.issues.length > 0) {
+                issuesContainer.show();
+                gridHealth.issues.forEach(issue => {
+                    issuesList.append(`<li>${issue.type}: ${issue.details}</li>`);
+                });
+            } else {
+                issuesContainer.hide();
+            }
+
+            // Update chart
+            if (powerLossChart && data.balanced_demand) {
+                const inputPower = data.balanced_demand;
+                const outputPower = inputPower.map(p => p * (1 - gridHealth.leakage.percentage / 100));
+                
+                powerLossChart.data.datasets[0].data = inputPower;
+                powerLossChart.data.datasets[1].data = outputPower;
+                powerLossChart.update();
+            }
+        }
+
+        // Initialize power loss chart when document loads
+        $(document).ready(function() {
+            initializePowerLossChart();
+        });
+
+        // Initialize power distribution charts
+        let powerDistributionChart = null;
+        let leakageHeatmap = null;
+
+        function initializePowerDistributionChart() {
+            const ctx = document.getElementById('powerDistChart').getContext('2d');
+            powerDistChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 24}, (_, i) => i + ':00'),
+                    datasets: [
+                        {
+                            label: 'Input Power',
+                            borderColor: '#2ecc71',
+                            data: []
+                        },
+                        {
+                            label: 'Output Power',
+                            borderColor: '#e74c3c',
+                            data: []
+                        },
+                        {
+                            label: 'Power Loss',
+                            borderColor: '#f39c12',
+                            data: []
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Power (MW)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function initializeLeakageHeatmap() {
+            const ctx = document.getElementById('leakageHeatmap').getContext('2d');
+            
+            // Create gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+            gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.8)');
+            gradient.addColorStop(1, 'rgba(255, 255, 255, 0.8)');
+
+            leakageHeatmap = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'High Risk',
+                        data: [
+                            { x: 0.2, y: 0.3 }
+                        ],
+                        backgroundColor: 'rgba(255, 99, 132, 0.8)',
+                        pointRadius: 15,
+                        pointStyle: 'circle',
+                        borderWidth: 2,
+                        borderColor: 'white'
+                    },
+                    {
+                        label: 'Medium Risk',
+                        data: [
+                            { x: 0.5, y: 0.5 }
+                        ],
+                        backgroundColor: 'rgba(255, 159, 64, 0.8)',
+                        pointRadius: 12,
+                        pointStyle: 'circle',
+                        borderWidth: 2,
+                        borderColor: 'white'
+                    },
+                    {
+                        label: 'Low Risk',
+                        data: [
+                            { x: 0.8, y: 0.7 }
+                        ],
+                        backgroundColor: 'rgba(75, 192, 192, 0.8)',
+                        pointRadius: 10,
+                        pointStyle: 'circle',
+                        borderWidth: 2,
+                        borderColor: 'white'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20,
+                                font: {
+                                    size: 12,
+                                    family: "'Poppins', sans-serif",
+                                    color: 'white'
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            min: 0,
+                            max: 1,
+                            grid: {
+                                display: true,
+                                color: 'rgba(255, 255, 255, 0.2)',
+                                borderColor: 'rgba(255, 255, 255, 0.4)'
+                            },
+                            ticks: {
+                                color: 'white'
+                            }
+                        },
+                        y: {
+                            min: 0,
+                            max: 1,
+                            grid: {
+                                display: true,
+                                color: 'rgba(255, 255, 255, 0.2)',
+                                borderColor: 'rgba(255, 255, 255, 0.4)'
+                            },
+                            ticks: {
+                                color: 'white'
+                            }
+                        }
+                    },
+                    elements: {
+                        point: {
+                            radius: 10,
+                            hoverRadius: 12,
+                            hitRadius: 8
+                        }
+                    }
+                }
+            });
+        }
+
+        // Add some CSS styles
+        const style = document.createElement('style');
+        style.textContent = `
+            .chart-container {
+                background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+                border-radius: 15px;
+                padding: 20px;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            }
+            #leakageHeatmap {
+                border-radius: 12px;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Initialize charts when document loads
+        $(document).ready(function() {
+            initializePowerDistributionChart();
+            initializeLeakageHeatmap();
+        });
+
+        // Function to update power distribution display
+        function updatePowerDistributionDisplay(data) {
+            // Update power distribution chart
+            powerDistChart.data.datasets[0].data = data.input_power;
+            powerDistChart.data.datasets[1].data = data.output_power;
+            powerDistChart.data.datasets[2].data = data.power_loss;
+            powerDistChart.update();
+
+            // Update metrics
+            $('#totalLoss').text(data.total_loss.toFixed(2) + ' MW');
+            $('#lossPercentage').text(data.loss_percentage.toFixed(1) + '%');
+            
+            // Update efficiency bar
+            const efficiency = 100 - data.loss_percentage;
+            $('#distributionEfficiencyBar')
+                .css('width', efficiency + '%')
+                .text(efficiency.toFixed(1) + '%');
+                
+            // Update critical points
+            const criticalPointCount = data.critical_points.length;
+            $('#criticalPointCount').text(criticalPointCount);
+            
+            // Update heatmap
+            leakageHeatmap.data.datasets[0].data = data.leakage_points.map(point => ({
+                x: point.x,
+                y: point.y,
+                r: point.value
+            }));
+            leakageHeatmap.update();
+        }
+
+        // Add to your existing success handler for the demand adjustment
+        function updateAllDisplays(data) {
+            if (data.distribution_data) {
+                updatePowerDistributionDisplay(data.distribution_data);
+            }
+            // ... other display updates
+        }
+
+        // Handle demand adjustment with debounce
+        let adjustmentTimeout;
+        $('#demandAdjustment').on('input', function() {
+            clearTimeout(adjustmentTimeout);
+            const sliderValue = $(this).val();
+            
+            // Update the percentage display immediately
+            $('#adjustmentValue').text(sliderValue + '%');
+            
+            adjustmentTimeout = setTimeout(() => {
+                $.ajax({
+                    url: '/adjust_demand/',
+                    method: 'POST',
+                    data: {
+                        'adjustment': sliderValue,
+                        'csrfmiddlewaretoken': '{{ csrf_token }}'
+                    },
+                    success: function(response) {
+                        // Update balanced chart with both original and balanced data
+                        const originalData = response.original_demand;
+                        const balancedData = response.balanced_demand;
+                        
+                        // Update original demand dataset
+                        balancedChart.data.datasets[0].data = originalData;
+                        
+                        // Update balanced demand dataset
+                        balancedChart.data.datasets[1].data = balancedData;
+                        
+                        // Update chart with smooth animation
+                        balancedChart.update({
+                            duration: 750,
+                            easing: 'easeInOutQuart'
+                        });
+
+                        // Update power distribution display
+                        if (response.distribution_data) {
+                            updatePowerDistributionDisplay(response.distribution_data);
+                        }
+                        
+                        // Update metrics cards
+                        const metricsHtml = `
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h6 class="card-subtitle mb-2 text-muted">Average Load</h6>
+                                            <h4 class="card-title">${formatPower(response.average_load)}</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h6 class="card-subtitle mb-2 text-muted">Peak Reduction</h6>
+                                            <h4 class="card-title">${response.peak_reduction.toFixed(1)}%</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h6 class="card-subtitle mb-2 text-muted">Load Factor</h6>
+                                            <h4 class="card-title">${response.load_factor.toFixed(1)}%</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        $('#balancingMetrics').html(metricsHtml);
+                    },
+                    error: function(xhr) {
+                        console.error('Error adjusting demand:', xhr.responseText);
+                    }
+                });
+            }, 300); // 300ms debounce delay
+        });
+
+        // Function to fetch and populate user details
+        function fetchUserDetails() {
+            $.ajax({
+                url: '{% url "grid_management:get_user_details" %}',
+                method: 'GET',
+                success: function(response) {
+                    if (response.success) {
+                        // Populate the bill generation form with user details
+                        $('#customer_name').val(response.data.full_name);
+                        $('#customer_id').val(response.data.customer_id);
+                        $('#service_no').val(response.data.service_no);
+                    } else {
+                        console.error('Failed to fetch user details:', response.error);
+                    }
+                },
+                error: function(xhr) {
+                    console.error('Error fetching user details:', xhr.responseText);
+                }
+            });
+        }
+
+        // Fetch user details when document is ready
+        $(document).ready(function() {
+            console.log('Document ready, starting updates...');
+            updateRealTimeData();
+            setInterval(updateRealTimeData, 30000);  // Update every 30 seconds
+            
+            // Fetch user details for bill generation
+            fetchUserDetails();
+        });
+
+        // Handle prediction form submission
+       
+        // Handle bill generation form submission
+        $('#billGenerationForm').on('submit', function(e) {
+            e.preventDefault();
+            
+            // Show loading state
+            $('#billResult').html('<div class="text-center"><div class="spinner-border text-primary" role="status"></div><div class="mt-2">Generating bill...</div></div>');
+            
+            $.ajax({
+                type: 'POST',
+                url: '{% url "grid_management:generate_bill" %}',
+                data: {
+                    'service_no': $('#service_no').val(),
+                    'units_consumed': $('#energy_consumed').val(),
+                    'billing_period': $('#billing_period').val(),
+                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                },
+                success: function(response) {
+                    if (response.success) {
+                        let billHtml = `
+                            <div class="bill-container mt-4" style="max-width: 800px; margin: auto; border: 2px solid #ddd; border-radius: 8px; background: #fff;">
+                                <div style="background: #007bff; color: white; padding: 20px; border-radius: 6px 6px 0 0;">
+                                    <h3 class="text-center mb-0">ELECTRICITY BILL</h3>
+                                </div>
+                                
+                                <div style="padding: 20px;">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h5>Customer Details</h5>
+                                            <table class="table table-borderless">
+                                                <tr>
+                                                    <td><strong>Customer ID:</strong></td>
+                                                    <td>${response.customer_id}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Name:</strong></td>
+                                                    <td>${response.customer_name}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Service Number:</strong></td>
+                                                    <td>${response.service_no}</td>
+                                                </tr>
+                                            </table>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h5>Bill Details</h5>
+                                            <table class="table table-borderless">
+                                                <tr>
+                                                    <td><strong>Bill Date:</strong></td>
+                                                    <td>${response.generation_date}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Due Date:</strong></td>
+                                                    <td>${response.due_date}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Billing Period:</strong></td>
+                                                    <td>${response.billing_period}</td>
+                                                </tr>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div class="row mt-4">
+                                        <div class="col-12">
+                                            <h5>Consumption & Charges</h5>
+                                            <table class="table">
+                                                <tr>
+                                                    <td>Units Consumed</td>
+                                                    <td class="text-end">${response.units_consumed.toFixed(2)} kWh</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Rate per Unit</td>
+                                                    <td class="text-end">₹${response.rate_per_unit.toFixed(2)}/kWh</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Energy Charges</td>
+                                                    <td class="text-end">₹${response.amount.toFixed(2)}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Tax (5%)</td>
+                                                    <td class="text-end">₹${response.tax.toFixed(2)}</td>
+                                                </tr>
+                                                <tr class="table-primary">
+                                                    <th>Total Amount</th>
+                                                    <th class="text-end">₹${response.total_amount.toFixed(2)}</th>
+                                                </tr>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div class="row mt-4">
+                                        <div class="col-12">
+                                            <div class="alert alert-info mb-0">
+                                                <strong>Note:</strong> Please pay before ${response.due_date} to avoid late payment charges.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        
+                        $('#billResult').html(billHtml);
+                        // Scroll to the bill result
+                        $('html, body').animate({
+                            scrollTop: $('#billResult').offset().top - 100
+                        }, 500);
+                    } else {
+                        $('#billResult').html(`
+                            <div class="alert alert-danger">
+                                ${response.error}
+                            </div>
+                        `);
+                    }
+                },
+                error: function(xhr) {
+                    $('#billResult').html(`
+                        <div class="alert alert-danger">
+                            An error occurred while generating the bill. Please try again.
+                        </div>
+                    `);
+                    console.error('Error:', xhr.responseText);
+                }
+            });
+        });
+        
+        // Add Font Awesome for icons
+        const fontAwesome = document.createElement('link');
+        fontAwesome.rel = 'stylesheet';
+        fontAwesome.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css';
+        document.head.appendChild(fontAwesome);
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+</body>
+</html>

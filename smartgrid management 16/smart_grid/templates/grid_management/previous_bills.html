@@ -1,0 +1,289 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg border-0 rounded-lg">
+                <div class="card-header bg-primary text-white text-center py-4">
+                    <h3 class="mb-0">Search and View Bills</h3>
+                </div>
+                <div class="card-body">
+                    <form id="billForm" method="POST" class="space-y-4">
+                        {% csrf_token %}
+                        <!-- Customer ID Search -->
+                        <div class="mb-3">
+                            <label for="customer_id" class="form-label text-lg font-medium">Customer ID</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="customer_id" name="customer_id"
+                                    placeholder="Enter Customer ID (e.g., CUS1234567)" required>
+                                <button class="btn btn-outline-secondary px-4 py-2" type="button" id="searchBtn">
+                                    <i class="fas fa-search"></i> Search
+                                </button>
+                            </div>
+                            <div id="customerIdFeedback" class="invalid-feedback text-red-600"></div>
+                        </div>
+
+                        <!-- Previous Bill Info Section -->
+                        <div id="previousBillsSection" style="display: none;">
+                            <div class="card mb-3">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">Previous Bill Information</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <p><strong>Last Bill Amount:</strong> <span id="lastBillAmount">₹0</span>
+                                            </p>
+                                            <p><strong>Last Bill Units:</strong> <span id="lastBillUnits">0</span></p>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <p><strong>Last Bill Period:</strong> <span id="lastBillPeriod">N/A</span>
+                                            </p>
+                                            <p><strong>Total Bills Generated:</strong> <span id="totalBills">0</span>
+                                            </p>
+                                        </div>
+                                        <div class="col-12">
+                                            <p><strong>Previous Bills:</strong></p>
+                                            <ul id="prevBillsList" class="list-unstyled">
+                                                <!-- Previous bills will be inserted here -->
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Add these styles inside a <style> block or external CSS file -->
+                        <style>
+                            body {
+                                background: #f0f4c3;
+                            }
+                            #prevBillsList {
+                                padding-left: 0;
+                            }
+
+                            #prevBillsList li {
+                                background-color: #f8f9fa;
+                                border: 1px solid #ddd;
+                                border-radius: 8px;
+                                margin-bottom: 8px;
+                                padding: 12px;
+                                font-size: 14px;
+                                color: #333;
+                                display: flex;
+                                justify-content: space-between;
+                                align-items: center;
+                                transition: background-color 0.3s ease;
+                            }
+
+                            #prevBillsList li:nth-child(even) {
+                                background-color: #f1f1f1;
+                            }
+
+                            #prevBillsList li:hover {
+                                background-color: #e9ecef;
+                            }
+
+                            .bill-item-text {
+                                display: flex;
+                                flex-direction: column;
+                                align-items: flex-start;
+                            }
+
+                            .bill-item-text span {
+                                font-weight: bold;
+                                margin-bottom: 5px;
+                            }
+
+                            .bill-item-text p {
+                                margin: 0;
+                                font-size: 13px;
+                                color: #555;
+                            }
+
+                            .bill-details {
+                                font-size: 14px;
+                                font-weight: normal;
+                                color: #555;
+                            }
+
+                            .bill-details span {
+                                margin-right: 8px;
+                            }
+
+                            .amount-text {
+                                color: #007bff;
+                            }
+
+                            /* For the 'No previous bills' message */
+                            #prevBillsList.empty-message {
+                                color: #888;
+                                font-style: italic;
+                                text-align: center;
+                            }
+
+                            #prevBillsList {
+                                padding-left: 0;
+                            }
+
+                            #prevBillsList li {
+                                background-color: #f8f9fa;
+                                border: 1px solid #ddd;
+                                border-radius: 8px;
+                                margin-bottom: 8px;
+                                padding: 12px;
+                                font-size: 14px;
+                                color: #333;
+                                display: flex;
+                                justify-content: space-between;
+                                align-items: flex-start;
+                                transition: background-color 0.3s ease;
+                                flex-direction: column;
+                            }
+
+                            #prevBillsList li:nth-child(even) {
+                                background-color: #f1f1f1;
+                            }
+
+                            #prevBillsList li:hover {
+                                background-color: #e9ecef;
+                            }
+
+                            .bill-item-text {
+                                display: flex;
+                                flex-direction: column;
+                                align-items: flex-start;
+                            }
+
+                            .bill-item-text p {
+                                margin: 0;
+                                font-size: 13px;
+                                color: #555;
+                            }
+
+                            .bill-details {
+                                font-size: 14px;
+                                font-weight: normal;
+                                color: #555;
+                            }
+
+                            .bill-details span {
+                                margin-right: 8px;
+                            }
+
+                            .amount-text {
+                                color: #007bff;
+                            }
+
+                            /* For the 'No previous bills' message */
+                            #prevBillsList.empty-message {
+                                color: #888;
+                                font-style: italic;
+                                text-align: center;
+                            }
+                        </style>
+
+
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    document.getElementById('searchBtn').addEventListener('click', function () {
+        fetchCustomerDetails();
+    });
+
+    document.getElementById('customer_id').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            fetchCustomerDetails();
+        }
+    });
+
+    function fetchCustomerDetails() {
+        const customerId = document.getElementById('customer_id').value;
+        if (!customerId) {
+            showError('Please enter a Customer ID');
+            return;
+        }
+
+        fetch(`/get_previous_bills_data/?customer_id=${encodeURIComponent(customerId)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show previous bill section
+                    document.getElementById('previousBillsSection').style.display = 'block';
+
+                    // Fill in previous bill information
+                    document.getElementById('lastBillAmount').textContent = `₹${data.data.last_bill_amount.toFixed(2)}`;
+                    document.getElementById('lastBillUnits').textContent = data.data.last_bill_units;
+                    document.getElementById('lastBillPeriod').textContent = data.data.last_bill_period;
+                    document.getElementById('totalBills').textContent = data.data.total_bills;
+                    if (data.data.previous_bills_data && data.data.previous_bills_data.length > 0) {
+                        let billsHtml = '';
+                        data.data.previous_bills_data.forEach(bill => {
+                            billsHtml += `
+            <li>
+                <div class="bill-item-text">
+                    <span class="amount-text">Amount: ₹${bill.total_amount}</span>
+                    <p><strong>Period:</strong> ${bill.month} ${bill.year}</p>
+                    <p><strong>Units Consumed:</strong> ${bill.units_consumed}</p>
+                    <p><strong>Rate per Unit:</strong> ₹${bill.rate_per_unit}</p>
+                    <p><strong>Amount:</strong> ₹${bill.amount}</p>
+                    <p><strong>Tax:</strong> ₹${bill.tax}</p>
+                    <p><strong>Generated Date:</strong> ${bill.generated_date}</p>
+                </div>
+                <div class="bill-details">
+                    <span><strong>Amount:</strong> ₹${bill.total_amount}</span> | 
+                    <span><strong>Units Consumed:</strong> ${bill.units_consumed}</span> | 
+                    <span><strong>Rate per Unit:</strong> ₹${bill.rate_per_unit}</span> | 
+                    <span><strong>Tax:</strong> ₹${bill.tax}</span> | 
+                    <span><strong>Amount:</strong> ₹${bill.amount}</span> | 
+                    <span><strong>Generated Date:</strong> ${bill.generated_date}</span>
+                </div>
+            </li>
+        `;
+                        });
+                        document.getElementById('prevBillsList').innerHTML = billsHtml;
+                    } else {
+                        document.getElementById('prevBillsList').textContent = '';
+                        document.getElementById('prevBillsList').classList.add('empty-message');
+                        document.getElementById('prevBillsList').textContent = 'No previous bills available.';
+                    }
+
+
+
+                    // Clear any previous errors
+                    clearError();
+                } else {
+                    showError(data.error);
+                }
+            })
+            .catch(error => {
+                showError('Error fetching customer details');
+            });
+    }
+
+    function showError(message) {
+        const customerIdInput = document.getElementById('customer_id');
+        const feedback = document.getElementById('customerIdFeedback');
+        customerIdInput.classList.add('is-invalid');
+        feedback.textContent = message;
+        feedback.style.display = 'block';
+    }
+
+    function clearError() {
+        const customerIdInput = document.getElementById('customer_id');
+        const feedback = document.getElementById('customerIdFeedback');
+        customerIdInput.classList.remove('is-invalid');
+        feedback.style.display = 'none';
+    }
+</script>
+{% endblock %}
+{% endblock %}
